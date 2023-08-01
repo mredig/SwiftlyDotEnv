@@ -4,6 +4,9 @@ import OSLog
 private let log = Logger(subsystem: "com.swiftly.env", category: "default")
 
 public enum SwiftlyDotEnv {
+	public private(set) static var isLoaded = false
+	private static let loadLock = NSLock()
+
 	public static subscript(key: String) -> String? {
 		environment[key] ?? ProcessInfo.processInfo.environment[key]
 	}
@@ -12,6 +15,9 @@ public enum SwiftlyDotEnv {
 
 	static private let defaultString = "default"
 	public static func loadDotEnv(_ processDataFormat: (Data) throws -> [String: String] = simpleEnvFileDecode) throws {
+		loadLock.lock()
+		defer { loadLock.unlock() }
+		guard isLoaded == false else { throw SwiftlyDotEnvError.alreadyLoaded }
 		let envFiles = try getEnvFiles()
 
 		let currentEnv = ProcessInfo.processInfo.environment["DOTENV"]
@@ -27,12 +33,14 @@ public enum SwiftlyDotEnv {
 		let envDict = try processDataFormat(envData)
 
 		environment = envDict
+		isLoaded = true
 	}
 
 	public enum SwiftlyDotEnvError: Error {
 		case noEnvFile(forKey: String)
 		case envFileNotUtf8Encoded
 		case envFileImproperlyFormatted(example: String?)
+		case alreadyLoaded
 	}
 
 	private static func getEnvFiles() throws -> [String: URL] {
