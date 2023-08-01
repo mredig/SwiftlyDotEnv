@@ -14,7 +14,7 @@ public enum SwiftlyDotEnv {
 	public private(set) static var environment: [String: String] = [:]
 
 	static private let defaultString = "default"
-	public static func loadDotEnv(_ processDataFormat: (Data) throws -> [String: String] = simpleEnvFileDecode) throws {
+	public static func loadDotEnv(requiringKeys requiredKeys: Set<String> = [], _ processDataFormat: (Data) throws -> [String: String] = simpleEnvFileDecode) throws {
 		loadLock.lock()
 		defer { loadLock.unlock() }
 		guard isLoaded == false else { throw SwiftlyDotEnvError.alreadyLoaded }
@@ -32,6 +32,12 @@ public enum SwiftlyDotEnv {
 
 		let envDict = try processDataFormat(envData)
 
+		if requiredKeys.isEmpty == false {
+			let keys = Set(envDict.keys)
+			let missingKeys = requiredKeys.subtracting(keys)
+			guard missingKeys.isEmpty else { throw SwiftlyDotEnvError.missingRequiredKeysInEnvFile(keys: missingKeys.sorted()) }
+		}
+
 		environment = envDict
 		isLoaded = true
 	}
@@ -41,6 +47,7 @@ public enum SwiftlyDotEnv {
 		case envFileNotUtf8Encoded
 		case envFileImproperlyFormatted(example: String?)
 		case alreadyLoaded
+		case missingRequiredKeysInEnvFile(keys: [String])
 	}
 
 	private static func getEnvFiles() throws -> [String: URL] {

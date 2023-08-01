@@ -7,6 +7,6 @@ struct Test {
 	static func main() async throws {
 		try SwiftlyDotEnv.loadDotEnv()
 
-		print("ran: \(SwiftlyDotEnv["USER"])")
+		print("ran: \(SwiftlyDotEnv["USER"] ?? "no user")")
 	}
 }
