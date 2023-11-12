@@ -1,9 +1,11 @@
 import Foundation
 
 public enum SwiftlyDotEnv {
+	/// Indicates whether `loadDotEnv` was called and completed successfully.
 	public private(set) static var isLoaded = false
 	private static let loadLock = NSLock()
 
+	/// Subscript access to the env, via the preference set by `preferredEnvironment`
 	public static subscript(key: String) -> String? {
 		switch preferredEnvironment {
 		case .appEnvFirst:
@@ -17,17 +19,38 @@ public enum SwiftlyDotEnv {
 		}
 	}
 
+	/// The deserialized data from your .env file
 	public private(set) static var environment: [String: String] = [:]
 
+	/// options for differing behavior when requesting env vars
 	public enum EnvPreference {
+		/// Prioritizes values provided in the .env file, falling back to any value located in the native env vars
 		case dotEnvFileFirst
-		case appEnvFirst
+		/// Prioritizes values provided in the .env file, ignoring any values located in the native env vars
 		case dotEnvFileOnly
+		/// Prioritizes values provided in the native env vars, falling back to any value located in the .env file
+		case appEnvFirst
+		/// Prioritizes values provided in the native env vars, ignoring any values located in the .env file
 		case appEnvOnly
 	}
+	/// Set this to indicate what env source you prefer/require between your .env file and the native env vars. Defaults to `.dotEnvFileFirst`
 	public static var preferredEnvironment: EnvPreference = .dotEnvFileFirst
 
+	
 	static public let defaultString = "default"
+	
+	
+	/// Loads the .env file into memory so you can use it. This must be called early in your program, before any usage 
+	/// of `SwiftlyDotEnv["MahKeys"]`
+	/// - Parameters:
+	///   - searchDirectory: The directory to search for your .env file(s) in. Defaults to `.currentDirectory()`
+	///   - envName: The name of the environment you want to load (typically prod/staging/dev or something similar, but 
+	///   the only limit is your imagination and your computer's memory for a really long string). If no value is 
+	///   provided, the value for `DOTENV` will be referred to from the native env vars, finally defaulting to just 
+	///   looking for a file simply named `.env`,
+	///   - requiredKeys: Provide any keys that *must* exist, or an error will be thrown.
+	///   - processDataFormat: A closure in the format of `(Data) throws -> [String: String]`. You can use this to allow 
+	///   for any file format to store your env vars, as long as you can deserialize it in this closure.
 	public static func loadDotEnv(
 		from searchDirectory: URL? = nil,
 		envName: String? = nil,
@@ -91,6 +114,10 @@ public enum SwiftlyDotEnv {
 			}
 	}
 
+	/// The default implementation for `processDataFormat` in `loadDotEnv`. This decoding requires that every env var
+	/// provided be one per line and be in the format of `KEY=Value`. Everything after the *first* `=` in the line is
+	/// considered a literal string value (and I guess before it as well for the key). Obviously a very simple format,
+	/// but you can extend it with your own magic.
 	public static func simpleEnvFileDecode(inData: Data) throws -> [String: String] {
 		guard
 			let lines = String(data: inData, encoding: .utf8)?
