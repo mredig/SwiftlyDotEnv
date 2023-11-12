@@ -1,31 +1,50 @@
 import Foundation
-import OSLog
-
-private let log = Logger(subsystem: "com.swiftly.env", category: "default")
 
 public enum SwiftlyDotEnv {
 	public private(set) static var isLoaded = false
 	private static let loadLock = NSLock()
 
 	public static subscript(key: String) -> String? {
-		environment[key] ?? ProcessInfo.processInfo.environment[key]
+		switch preferredEnvironment {
+		case .appEnvFirst:
+			ProcessInfo.processInfo.environment[key] ?? environment[key]
+		case .dotEnvFileFirst:
+			environment[key] ?? ProcessInfo.processInfo.environment[key]
+		case .dotEnvFileOnly:
+			environment[key]
+		case .appEnvOnly:
+			ProcessInfo.processInfo.environment[key]
+		}
 	}
 
 	public private(set) static var environment: [String: String] = [:]
 
-	static private let defaultString = "default"
-	public static func loadDotEnv(requiringKeys requiredKeys: Set<String> = [], _ processDataFormat: (Data) throws -> [String: String] = simpleEnvFileDecode) throws {
+	public enum EnvPreference {
+		case dotEnvFileFirst
+		case appEnvFirst
+		case dotEnvFileOnly
+		case appEnvOnly
+	}
+	public static var preferredEnvironment: EnvPreference = .dotEnvFileFirst
+
+	static public let defaultString = "default"
+	public static func loadDotEnv(
+		from searchDirectory: URL? = nil,
+		envName: String? = nil,
+		requiringKeys requiredKeys: Set<String> = [],
+		_ processDataFormat: (Data) throws -> [String: String] = simpleEnvFileDecode
+	) throws {
 		loadLock.lock()
 		defer { loadLock.unlock() }
 		guard isLoaded == false else { throw SwiftlyDotEnvError.alreadyLoaded }
-		let envFiles = try getEnvFiles()
+		let envFiles = try getEnvFiles(from: searchDirectory ?? .currentDirectory())
 
-		let currentEnv = ProcessInfo.processInfo.environment["DOTENV"]
+		let currentEnv = envName ?? ProcessInfo.processInfo.environment["DOTENV"] ?? defaultString
 
 		guard
-			let envFileURL = currentEnv.flatMap({ envFiles[$0] }) ?? envFiles[defaultString]
+			let envFileURL = envFiles[currentEnv]
 		else {
-			throw SwiftlyDotEnvError.noEnvFile(forKey: currentEnv ?? defaultString)
+			throw SwiftlyDotEnvError.noEnvFile(forKey: currentEnv)
 		}
 
 		let envData = try Data(contentsOf: envFileURL)
@@ -50,10 +69,11 @@ public enum SwiftlyDotEnv {
 		case missingRequiredKeysInEnvFile(keys: [String])
 	}
 
-	private static func getEnvFiles() throws -> [String: URL] {
+	private static func getEnvFiles(from directory: URL) throws -> [String: URL] {
 		let fm = FileManager.default
 
-		let contents = try fm.contentsOfDirectory(at: .currentDirectory(), includingPropertiesForKeys: nil)
+		let sourceDirectory = directory
+		let contents = try fm.contentsOfDirectory(at: sourceDirectory, includingPropertiesForKeys: nil)
 
 		return contents
 			.filter { $0.lastPathComponent.hasPrefix(".env") }
