@@ -6,7 +6,7 @@ Just pass in a custom serializer closure to the `SwiftlyDotEnv.loadDotEnv` metho
 
 ### Usage
 
-1. `https://github.com/mredig/SwiftlyDotEnv.git` in your swift package dependencies. You know the drill by now. The latest version as of this writing is `0.2.1` ish. It's pretty simple so it probably won't get (or need) many (any?) updates.
+1. `https://github.com/mredig/SwiftlyDotEnv.git` in your swift package dependencies. You know the drill by now. The latest version as of this writing is `0.2.3` ish. It's pretty simple so it probably won't get (or need) many (any?) updates.
 1. `import SwiftlyDotEnv`
 1. Make sure your env file(s) are named `.env` or `.env.[envNameNoBrackets]`
 1. As early as you can in your project (at the very least, before you need any env vars), run `try SwiftlyDotEnv.loadDotEnv()`

@@ -36,11 +36,9 @@ public enum SwiftlyDotEnv {
 	/// Set this to indicate what env source you prefer/require between your .env file and the native env vars. Defaults to `.dotEnvFileFirst`
 	public static var preferredEnvironment: EnvPreference = .dotEnvFileFirst
 
-	
 	static public let defaultString = "default"
-	
-	
-	/// Loads the .env file into memory so you can use it. This must be called early in your program, before any usage 
+
+	/// Loads the .env file into memory so you can use it. This must be called early in your program, before any usage
 	/// of `SwiftlyDotEnv["MahKeys"]`
 	/// - Parameters:
 	///   - searchDirectory: The directory to search for your .env file(s) in. Defaults to `.currentDirectory()`
@@ -60,7 +58,7 @@ public enum SwiftlyDotEnv {
 		loadLock.lock()
 		defer { loadLock.unlock() }
 		guard isLoaded == false else { throw SwiftlyDotEnvError.alreadyLoaded }
-		let envFiles = try getEnvFiles(from: searchDirectory ?? .currentDirectory())
+		let envFiles = try getEnvFiles(from: searchDirectory ?? FileManager.default.currentWorkingDirectory)
 
 		let currentEnv = envName ?? ProcessInfo.processInfo.environment["DOTENV"] ?? defaultString
 
@@ -107,8 +105,14 @@ public enum SwiftlyDotEnv {
 					return
 				}
 
-				let envName = filename
-					.replacing(/^\.env\.?/, with: { _ in "" })
+				let envName: String
+				if #available(macOS 13.0, *) {
+					envName = filename
+						.replacing(/^\.env\.?/, with: { _ in "" })
+				} else {
+					envName = filename
+						.replacingOccurrences(of: ##"^\.env\.?"##, with: "", options: .regularExpression)
+				}
 
 				dict[envName] = url
 			}
