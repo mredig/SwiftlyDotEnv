@@ -1,6 +1,6 @@
 # SwiftlyDotEnv
 
-A .env file loader for Swift. I know there are already several out there, but do the others allow you to use just about any format to store your env vars?! I'm honestly asking. I don't know. I doubt it. Most that I've dealt with require some sort of `key=value` per line format (and that is the default included here), but what you want json or yaml?
+A .env file loader for Swift. I know there are already several out there, but do the others allow you to use just about any format to store your env vars?! I'm honestly asking. I don't know. I doubt it. Most that I've dealt with require some sort of `key=value` per line format (and that is the default included here), but what if you want json or yaml? Do quotes get interpretted or are they literal? What if there are multiple `=`? What if your value has multiple lines? You decide! (details on the defaults are in the docs, but it's the simplest of each of these options.) What about some values that HAVE to be in the env file or the app won't function? You can specify any required keys in the loader, or it will throw (and report the missing values!)
 
 Just pass in a custom serializer closure to the `SwiftlyDotEnv.loadDotEnv` method that takes `Data` in and returns a `[String: String]` and you're golden. Magic! This could be a `JSONDecoder`, a `PropertyListSerializer`, or some yaml or toml library. Of course you're not limited to those, but I think you get the idea.
 
