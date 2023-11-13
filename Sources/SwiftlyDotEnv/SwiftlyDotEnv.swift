@@ -135,4 +135,13 @@ public enum SwiftlyDotEnv {
 			$0[broken[0]] = broken[1]
 		})
 	}
+
+	package static func resetForTests() {
+		loadLock.lock()
+		defer { loadLock.unlock() }
+
+		environment = [:]
+		isLoaded = false
+		preferredEnvironment = .dotEnvFileFirst
+	}
 }
