@@ -35,6 +35,7 @@ final class SwiftlyDotEnvTests: XCTestCase {
 		XCTAssertEqual("prod env loaded", SwiftlyDotEnv["testValue"])
 	}
 
+	@available(macOS 13.0, iOS 16.0, tvOS 16.0, *)
 	func testNonDefaultDirectory() throws {
 		let path = URL.currentDirectory()
 			.appending(components: "Alternate", "Dir ectory", "path")
@@ -68,6 +69,7 @@ final class SwiftlyDotEnvTests: XCTestCase {
 		XCTAssertThrowsError(try throwingBlock())
 	}
 
+	@available(macOS 13.0, iOS 16.0, tvOS 16.0, *)
 	func testLoadJSON() throws {
 		let path = URL.currentDirectory()
 			.appending(components: "Alternate", "Dir ectory", "path")

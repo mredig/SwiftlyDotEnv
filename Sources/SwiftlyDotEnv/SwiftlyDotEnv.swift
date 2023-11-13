@@ -106,7 +106,7 @@ public enum SwiftlyDotEnv {
 				}
 
 				let envName: String
-				if #available(macOS 13.0, *) {
+				if #available(macOS 13.0, iOS 16.0, tvOS 16.0, *) {
 					envName = filename
 						.replacing(/^\.env\.?/, with: { _ in "" })
 				} else {
