@@ -7,6 +7,8 @@ let package = Package(
     name: "SwiftlyDotEnv",
 	platforms: [
 		.macOS(.v13),
+		.iOS(.v16),
+		.tvOS(.v16),
 	],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
