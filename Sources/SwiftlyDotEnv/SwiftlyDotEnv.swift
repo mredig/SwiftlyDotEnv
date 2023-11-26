@@ -73,7 +73,8 @@ public enum SwiftlyDotEnv {
 		let envDict = try processDataFormat(envData)
 
 		if requiredKeys.isEmpty == false {
-			let keys = Set(envDict.keys)
+			var keys = Set(envDict.keys)
+			keys = keys.union(ProcessInfo.processInfo.environment.keys)
 			let missingKeys = requiredKeys.subtracting(keys)
 			guard missingKeys.isEmpty else { throw SwiftlyDotEnvError.missingRequiredKeysInEnvFile(keys: missingKeys.sorted()) }
 		}

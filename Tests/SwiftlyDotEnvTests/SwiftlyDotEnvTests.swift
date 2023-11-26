@@ -50,6 +50,7 @@ final class SwiftlyDotEnvTests: XCTestCase {
 			requiringKeys: [
 				"PASS",
 				"testValue",
+				"IS_NOT_IN_FILE", // shouldn't exist in the file, but SHOULD exist in system env
 			])
 
 		XCTAssertEqual("prod env loaded", SwiftlyDotEnv["testValue"])
