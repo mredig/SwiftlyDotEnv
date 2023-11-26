@@ -90,6 +90,22 @@ final class SwiftlyDotEnvTests: XCTestCase {
 		XCTAssertEqual("1", SwiftlyDotEnv["jsonLoadedBool"])
 		XCTAssertEqual("true", SwiftlyDotEnv["jsonLoadedStr"])
 	}
+
+	func testTypedKeys() throws {
+		try SwiftlyDotEnv.loadDotEnv(envName: "prod")
+
+		XCTAssertEqual("prod env loaded", SwiftlyDotEnv[TestKeys.testValue])
+	}
+}
+
+struct TestKeys: RawRepresentable {
+	static let testValue = Self(rawValue: "testValue")
+
+	let rawValue: String
+
+	init(rawValue: String) {
+		self.rawValue = rawValue
+	}
 }
 
 struct SimpleTestError: Error {

@@ -19,6 +19,10 @@ public enum SwiftlyDotEnv {
 		}
 	}
 
+	public static subscript<Key: RawRepresentable>(key: Key) -> String? where Key.RawValue == String {
+		self[key.rawValue]
+	}
+
 	/// The deserialized data from your .env file
 	public private(set) static var environment: [String: String] = [:]
 
