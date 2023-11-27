@@ -1,5 +1,5 @@
 import XCTest
-@testable import SwiftlyDotEnv
+import SwiftlyDotEnv
 
 final class SwiftlyDotEnvTests: XCTestCase {
 	override func tearDown() {

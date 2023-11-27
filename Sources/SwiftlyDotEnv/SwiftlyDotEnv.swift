@@ -168,6 +168,8 @@ extension SwiftlyDotEnv where Key == DefaultKey {
 /// All instances and generics utilize the same underlying environment, but you are able to retrieve the same data in
 /// as many different ways as you want. Suggested usage is demonstrated in the `testTypedKeysInstance` test.
 public struct SwiftlyDotEnv<Key: RawRepresentable> where Key.RawValue == String {
+	public init() {}
+
 	public static subscript(key: Key) -> String? where Key.RawValue == String {
 		SwiftlyDotEnv<DefaultKey>.defaultShared[key.rawValue]
 	}
