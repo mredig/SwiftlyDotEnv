@@ -91,10 +91,17 @@ final class SwiftlyDotEnvTests: XCTestCase {
 		XCTAssertEqual("true", SwiftlyDotEnv["jsonLoadedStr"])
 	}
 
-	func testTypedKeys() throws {
+	func testTypedKeysStatic() throws {
 		try SwiftlyDotEnv.loadDotEnv(envName: "prod")
 
 		XCTAssertEqual("prod env loaded", SwiftlyDotEnv[TestKeys.testValue])
+	}
+
+	func testTypedKeysInstance() throws {
+		let dotEnv = SwiftlyDotEnv<TestKeys>() // store this in a global space
+		try SwiftlyDotEnv.loadDotEnv(envName: "prod")
+
+		XCTAssertEqual("prod env loaded", dotEnv[.testValue])
 	}
 }
 

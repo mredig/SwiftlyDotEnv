@@ -1,30 +1,11 @@
 import Foundation
 
-public enum SwiftlyDotEnv {
+extension SwiftlyDotEnv where Key == DefaultKey {
 	/// Indicates whether `loadDotEnv` was called and completed successfully.
 	public private(set) static var isLoaded = false
 	private static let loadLock = NSLock()
 
-	/// Subscript access to the env, via the preference set by `preferredEnvironment`
-	public static subscript(key: String) -> String? {
-		switch preferredEnvironment {
-		case .appEnvFirst:
-			ProcessInfo.processInfo.environment[key] ?? environment[key]
-		case .dotEnvFileFirst:
-			environment[key] ?? ProcessInfo.processInfo.environment[key]
-		case .dotEnvFileOnly:
-			environment[key]
-		case .appEnvOnly:
-			ProcessInfo.processInfo.environment[key]
-		}
-	}
-
-	public static subscript<Key: RawRepresentable>(key: Key) -> String? where Key.RawValue == String {
-		self[key.rawValue]
-	}
-
-	/// The deserialized data from your .env file
-	public private(set) static var environment: [String: String] = [:]
+	public static let defaultShared = SwiftlyDotEnv<DefaultKey>()
 
 	/// options for differing behavior when requesting env vars
 	public enum EnvPreference {
@@ -42,16 +23,47 @@ public enum SwiftlyDotEnv {
 
 	static public let defaultString = "default"
 
+	/// The deserialized data from your .env file
+	public private(set) static var environment: [String: String] = [:]
+
+	/// Subscript access to the env, via the preference set by `preferredEnvironment`
+	private subscript(key: String) -> String? {
+		switch Self.preferredEnvironment {
+		case .appEnvFirst:
+			ProcessInfo.processInfo.environment[key] ?? Self.environment[key]
+		case .dotEnvFileFirst:
+			Self.environment[key] ?? ProcessInfo.processInfo.environment[key]
+		case .dotEnvFileOnly:
+			Self.environment[key]
+		case .appEnvOnly:
+			ProcessInfo.processInfo.environment[key]
+		}
+	}
+
+	public static subscript(key: String) -> String? where Key.RawValue == String {
+		SwiftlyDotEnv<DefaultKey>.defaultShared[key]
+	}
+
+	public enum SwiftlyDotEnvError: Error {
+		case noEnvFile(forKey: String)
+		case envFileNotUtf8Encoded
+		case envFileImproperlyFormatted(example: String?)
+		case alreadyLoaded
+		case missingRequiredKeysInEnvFile(keys: [String])
+	}
+
+	private typealias DotEnvError = SwiftlyDotEnv<DefaultKey>.SwiftlyDotEnvError
+
 	/// Loads the .env file into memory so you can use it. This must be called early in your program, before any usage
 	/// of `SwiftlyDotEnv["MahKeys"]`
 	/// - Parameters:
 	///   - searchDirectory: The directory to search for your .env file(s) in. Defaults to `.currentDirectory()`
-	///   - envName: The name of the environment you want to load (typically prod/staging/dev or something similar, but 
-	///   the only limit is your imagination and your computer's memory for a really long string). If no value is 
-	///   provided, the value for `DOTENV` will be referred to from the native env vars, finally defaulting to just 
+	///   - envName: The name of the environment you want to load (typically prod/staging/dev or something similar, but
+	///   the only limit is your imagination and your computer's memory for a really long string). If no value is
+	///   provided, the value for `DOTENV` will be referred to from the native env vars, finally defaulting to just
 	///   looking for a file simply named `.env`,
 	///   - requiredKeys: Provide any keys that *must* exist, or an error will be thrown.
-	///   - processDataFormat: A closure in the format of `(Data) throws -> [String: String]`. You can use this to allow 
+	///   - processDataFormat: A closure in the format of `(Data) throws -> [String: String]`. You can use this to allow
 	///   for any file format to store your env vars, as long as you can deserialize it in this closure.
 	public static func loadDotEnv(
 		from searchDirectory: URL? = nil,
@@ -59,17 +71,17 @@ public enum SwiftlyDotEnv {
 		requiringKeys requiredKeys: Set<String> = [],
 		_ processDataFormat: (Data) throws -> [String: String] = simpleEnvFileDecode
 	) throws {
-		loadLock.lock()
-		defer { loadLock.unlock() }
-		guard isLoaded == false else { throw SwiftlyDotEnvError.alreadyLoaded }
+		SwiftlyDotEnv<DefaultKey>.loadLock.lock()
+		defer { SwiftlyDotEnv<DefaultKey>.loadLock.unlock() }
+		guard SwiftlyDotEnv<DefaultKey>.isLoaded == false else { throw DotEnvError.alreadyLoaded }
 		let envFiles = try getEnvFiles(from: searchDirectory ?? FileManager.default.currentWorkingDirectory)
 
-		let currentEnv = envName ?? ProcessInfo.processInfo.environment["DOTENV"] ?? defaultString
+		let currentEnv = envName ?? ProcessInfo.processInfo.environment["DOTENV"] ?? SwiftlyDotEnv<DefaultKey>.defaultString
 
 		guard
 			let envFileURL = envFiles[currentEnv]
 		else {
-			throw SwiftlyDotEnvError.noEnvFile(forKey: currentEnv)
+			throw DotEnvError.noEnvFile(forKey: currentEnv)
 		}
 
 		let envData = try Data(contentsOf: envFileURL)
@@ -80,19 +92,11 @@ public enum SwiftlyDotEnv {
 			var keys = Set(envDict.keys)
 			keys = keys.union(ProcessInfo.processInfo.environment.keys)
 			let missingKeys = requiredKeys.subtracting(keys)
-			guard missingKeys.isEmpty else { throw SwiftlyDotEnvError.missingRequiredKeysInEnvFile(keys: missingKeys.sorted()) }
+			guard missingKeys.isEmpty else { throw DotEnvError.missingRequiredKeysInEnvFile(keys: missingKeys.sorted()) }
 		}
 
-		environment = envDict
-		isLoaded = true
-	}
-
-	public enum SwiftlyDotEnvError: Error {
-		case noEnvFile(forKey: String)
-		case envFileNotUtf8Encoded
-		case envFileImproperlyFormatted(example: String?)
-		case alreadyLoaded
-		case missingRequiredKeysInEnvFile(keys: [String])
+		SwiftlyDotEnv<DefaultKey>.environment = envDict
+		SwiftlyDotEnv<DefaultKey>.isLoaded = true
 	}
 
 	private static func getEnvFiles(from directory: URL) throws -> [String: URL] {
@@ -132,13 +136,13 @@ public enum SwiftlyDotEnv {
 			let lines = String(data: inData, encoding: .utf8)?
 				.split(separator: "\n")
 				.map(String.init)
-		else { throw SwiftlyDotEnvError.envFileNotUtf8Encoded }
+		else { throw DotEnvError.envFileNotUtf8Encoded }
 
 		let dict: [String: String] = [:]
 		return try lines.reduce(into: dict, {
 			let broken = $1.split(separator: "=", maxSplits: 1).map(String.init)
 			guard broken.count == 2 else {
-				throw SwiftlyDotEnvError.envFileImproperlyFormatted(example: $1)
+				throw DotEnvError.envFileImproperlyFormatted(example: $1)
 			}
 
 			$0[broken[0]] = broken[1]
@@ -146,11 +150,29 @@ public enum SwiftlyDotEnv {
 	}
 
 	package static func resetForTests() {
-		loadLock.lock()
-		defer { loadLock.unlock() }
+		SwiftlyDotEnv<DefaultKey>.loadLock.lock()
+		defer { SwiftlyDotEnv<DefaultKey>.loadLock.unlock() }
 
-		environment = [:]
-		isLoaded = false
-		preferredEnvironment = .dotEnvFileFirst
+		SwiftlyDotEnv<DefaultKey>.environment = [:]
+		SwiftlyDotEnv<DefaultKey>.isLoaded = false
+		SwiftlyDotEnv<DefaultKey>.preferredEnvironment = .dotEnvFileFirst
+	}
+}
+
+
+/// Loads and provides access to .env files in key/value format. You can provide files of basically any format
+/// with `(Data) throws -> [String: String]` in the `loadDotEnv` static method. Whileit works out the box with
+/// `String` Keys, you are encouraged to create a type safe, `RawRepresentable` type with the string values
+/// encapsulated within to make retrieval more type safe and gain some assistance from auto complete.
+///
+/// All instances and generics utilize the same underlying environment, but you are able to retrieve the same data in
+/// as many different ways as you want. Suggested usage is demonstrated in the `testTypedKeysInstance` test.
+public struct SwiftlyDotEnv<Key: RawRepresentable> where Key.RawValue == String {
+	public static subscript(key: Key) -> String? where Key.RawValue == String {
+		SwiftlyDotEnv<DefaultKey>.defaultShared[key.rawValue]
+	}
+
+	public subscript(key: Key) -> String? where Key.RawValue == String {
+		SwiftlyDotEnv<DefaultKey>.defaultShared[key.rawValue]
 	}
 }

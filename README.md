@@ -1,6 +1,6 @@
 # SwiftlyDotEnv
 
-A .env file loader for Swift. I know there are already several out there, but do the others allow you to use just about any format to store your env vars?! I'm honestly asking. I don't know. I doubt it. Most that I've dealt with require some sort of `key=value` per line format (and that is the default included here), but what if you want json or yaml? Do quotes get interpretted or are they literal? What if there are multiple `=`? What if your value has multiple lines? You decide! (details on the defaults are in the docs, but it's the simplest of each of these options.) What about some values that HAVE to be in the env file or the app won't function? You can specify any required keys in the loader, or it will throw (and report the missing values!)
+A .env file loader for Swift. I know there are already several out there, but do the others allow you to use just about any format to store your env vars?! I'm honestly asking. I don't know. I doubt it. Most that I've dealt with require some sort of `key=value` per line format (and that is the default included here), but what if you want json or yaml? Do quotes get interpretted or are they literal? What if there are multiple `=`? What if your value has multiple lines? You decide! (details on the defaults are in the docs, but it's the simplest of each of these options.) What about some values that HAVE to be in the env or the app won't function? You can specify any required keys in the loader, or it will throw (and report the missing values!)
 
 Just pass in a custom serializer closure to the `SwiftlyDotEnv.loadDotEnv` method that takes `Data` in and returns a `[String: String]` and you're golden. Magic! This could be a `JSONDecoder`, a `PropertyListSerializer`, or some yaml or toml library. Of course you're not limited to those, but I think you get the idea.
 
@@ -15,6 +15,33 @@ Just pass in a custom serializer closure to the `SwiftlyDotEnv.loadDotEnv` metho
 1. Henceforth, replace any usage of `ProcessInfo.processInfo.environment["EnVKeY"]` with `SwiftlyDotEnv["EnVKeY"]`
 1. If you need to, you can also access the raw .env file dict at `SwiftlyDotEnv.environment` (does not include the system app launched environment)
 
+
+### Advanced (recommended) Usage
+1. Generally follow the same directions as above, but continue on by creating a new, Key type with all your keys as static properties:
+	
+	```swift
+	struct MyEnvKey: RawRepresentable {
+		static let foo = MyEnvKey(rawValue: "foo")
+		static let bar = MyEnvKey(rawValue: "bar")
+		static let baz = MyEnvKey(rawValue: "baz")
+	
+		let rawValue: String
+		
+		init(rawValue: String) {
+			self.rawValue = rawValue
+		}
+	}
+	```
+	
+1. Create an instance of SwiftlyDotEnv somewhere in global space:
+	* `let dotEnv = SwiftlyDotEnv<MyEnvKey>()`
+1. Now you can use dot syntax to access your keys!
+	
+	```swift
+	let firstValue = dotEnv[.foo]
+	let secondValue = dotEnv[.bar]
+	let thirdValue = dotEnv[.baz]
+	```
 
 ### Docs
 All properties and methods are documented inline in code. Either reference the code directly or use Xcode's Option-Click for docs.
