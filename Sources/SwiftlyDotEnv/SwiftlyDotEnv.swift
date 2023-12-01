@@ -44,15 +44,7 @@ extension SwiftlyDotEnv where Key == DefaultKey {
 		SwiftlyDotEnv<DefaultKey>.defaultShared[key]
 	}
 
-	public enum SwiftlyDotEnvError: Error {
-		case noEnvFile(forKey: String)
-		case envFileNotUtf8Encoded
-		case envFileImproperlyFormatted(example: String?)
-		case alreadyLoaded
-		case missingRequiredKeysInEnvFile(keys: [String])
-	}
-
-	private typealias DotEnvError = SwiftlyDotEnv<DefaultKey>.SwiftlyDotEnvError
+	private typealias DotEnvError = SwiftlyDotEnvError
 
 	/// Loads the .env file into memory so you can use it. This must be called early in your program, before any usage
 	/// of `SwiftlyDotEnv["MahKeys"]`
@@ -81,7 +73,16 @@ extension SwiftlyDotEnv where Key == DefaultKey {
 		guard
 			let envFileURL = envFiles[currentEnv]
 		else {
-			throw DotEnvError.noEnvFile(forKey: currentEnv)
+			if requiredKeys.isEmpty == false {
+				do {
+					try checkIf(requiredKeys: requiredKeys, existWithinAvailableKeys: Set(ProcessInfo.processInfo.environment.keys))
+					return
+				} catch {
+					throw DotEnvError.noEnvFile(forKey: currentEnv)
+				}
+			} else {
+				return
+			}
 		}
 
 		let envData = try Data(contentsOf: envFileURL)
@@ -91,12 +92,16 @@ extension SwiftlyDotEnv where Key == DefaultKey {
 		if requiredKeys.isEmpty == false {
 			var keys = Set(envDict.keys)
 			keys = keys.union(ProcessInfo.processInfo.environment.keys)
-			let missingKeys = requiredKeys.subtracting(keys)
-			guard missingKeys.isEmpty else { throw DotEnvError.missingRequiredKeysInEnvFile(keys: missingKeys.sorted()) }
+			try checkIf(requiredKeys: requiredKeys, existWithinAvailableKeys: keys)
 		}
 
 		SwiftlyDotEnv<DefaultKey>.environment = envDict
 		SwiftlyDotEnv<DefaultKey>.isLoaded = true
+	}
+
+	private static func checkIf(requiredKeys: Set<String>, existWithinAvailableKeys availableKeys: Set<String>) throws {
+		let missingKeys = requiredKeys.subtracting(availableKeys)
+		guard missingKeys.isEmpty else { throw DotEnvError.missingRequiredKeysInEnvFile(keys: missingKeys.sorted()) }
 	}
 
 	private static func getEnvFiles(from directory: URL) throws -> [String: URL] {

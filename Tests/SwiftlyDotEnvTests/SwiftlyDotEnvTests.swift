@@ -56,6 +56,35 @@ final class SwiftlyDotEnvTests: XCTestCase {
 		XCTAssertEqual("prod env loaded", SwiftlyDotEnv["testValue"])
 	}
 
+	func testRequiredKeysExistInSystemEnvWithNoFile() throws {
+		try SwiftlyDotEnv.loadDotEnv(
+			envName: "doesNotExist",
+			requiringKeys: [
+				"IS_NOT_IN_FILE", // shouldn't exist in the file, but SHOULD exist in system env
+			])
+
+		XCTAssertEqual("true", SwiftlyDotEnv["IS_NOT_IN_FILE"])
+	}
+
+	func testRequiredKeysDoNotExistInSystemEnvWithNoFile() throws {
+		let wrapped = {
+			try SwiftlyDotEnv.loadDotEnv(
+				envName: "doesNotExist",
+				requiringKeys: [
+					"testValue",
+				])
+		}
+		XCTAssertThrowsError(try wrapped()) { error in
+			guard
+				let error = error as? SwiftlyDotEnvError,
+				case .noEnvFile = error
+			else {
+				XCTFail("wrong error: \(error)")
+				return
+			}
+		}
+	}
+
 	func testRequiredKeysFail() throws {
 		let throwingBlock = {
 			try SwiftlyDotEnv.loadDotEnv(
